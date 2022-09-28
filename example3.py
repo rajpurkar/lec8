@@ -75,16 +75,16 @@ class Config():
 
 
 def train():
-    # Launch 5 experiments, trying different dropout rates
-    config_dict = {
-        "epochs": 10,
-        "batch_size": 128,
-        "lr": 1e-3,
-        "dropout": random.uniform(0.01, 0.80),
-    }
-    config = Config(config_dict)
-
     for _ in range(5):
+            # Launch 5 experiments, trying different dropout rates
+        config_dict = {
+            "epochs": 10,
+            "batch_size": 128,
+            "lr": 1e-3,
+            "dropout": random.uniform(0.01, 0.80),
+        }
+        config = Config(config_dict)
+
         # Get the data
         train_dl = get_dataloader(
             is_train=True,

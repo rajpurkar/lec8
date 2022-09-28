@@ -10,21 +10,26 @@ DEVICE = "cuda:0" if torch.cuda.is_available() else "cpu"
 
 
 def get_dataloader(is_train, batch_size, slice=5):
-    "Get a training dataloader"
     full_dataset = torchvision.datasets.MNIST(
-        root=".", train=is_train, transform=T.ToTensor(), download=True)
+        root=".",
+        train=is_train,
+        transform=T.ToTensor(),
+        download=True)
     sub_dataset = torch.utils.data.Subset(
-        full_dataset, indices=range(0, len(full_dataset), slice))
-    loader = torch.utils.data.DataLoader(dataset=sub_dataset, 
-                                         batch_size=batch_size, 
-                                         shuffle=True if is_train else False, 
-                                         pin_memory=True, num_workers=2)
+        full_dataset,
+        indices=range(0, len(full_dataset), slice))
+    loader = torch.utils.data.DataLoader(
+        dataset=sub_dataset,
+        batch_size=batch_size,
+        shuffle=True if is_train else False,
+        pin_memory=True, num_workers=2)
     return loader
 
 
 def get_model(dropout):
     "A simple model"
-    model = nn.Sequential(nn.Flatten(),
+    model = nn.Sequential(
+        nn.Flatten(),
         nn.Linear(28*28, 256),
         nn.BatchNorm1d(256),
         nn.ReLU(),
@@ -33,8 +38,13 @@ def get_model(dropout):
     return model
 
 
-def validate_model(model, valid_dl, loss_func, log_images=False, batch_idx=0):
-    "Compute performance of the model on the validation dataset and log a wandb.Table"
+def validate_model(
+        model,
+        valid_dl,
+        loss_func,
+        log_images=False,
+        batch_idx=0):
+
     model.eval()
     val_loss = 0.
     with torch.inference_mode():
@@ -44,7 +54,7 @@ def validate_model(model, valid_dl, loss_func, log_images=False, batch_idx=0):
 
             # Forward pass
             outputs = model(images)
-            val_loss += loss_func(outputs, labels)*labels.size(0)
+            val_loss += loss_func(outputs, labels).item() * labels.size(0)
 
             # Compute accuracy and accumulate
             _, predicted = torch.max(outputs.data, 1)
@@ -52,7 +62,11 @@ def validate_model(model, valid_dl, loss_func, log_images=False, batch_idx=0):
 
             # Log one batch of images to the dashboard, always same batch_idx.
             if i == batch_idx and log_images:
-                log_image_table(images, predicted, labels, outputs.softmax(dim=1))
+                log_image_table(
+                    images,
+                    predicted,
+                    labels,
+                    outputs.softmax(dim=1))
     return val_loss / len(valid_dl.dataset), correct / len(valid_dl.dataset)
 
 
@@ -62,10 +76,14 @@ def log_image_table(images, predicted, labels, probs):
     table = wandb.Table(
         columns=["image", "pred", "target"]+[f"score_{i}"
             for i in range(10)])
-    for img, pred, targ, prob in zip(images.to("cpu"), predicted.to("cpu"), labels.to("cpu"), probs.to("cpu")):
+    for img, pred, targ, prob in \
+            zip(images.to("cpu"),
+                predicted.to("cpu"),
+                labels.to("cpu"),
+                probs.to("cpu")):
         table.add_data(
             wandb.Image(img[0].numpy()*255), pred, targ, *prob.numpy())
-    wandb.log({"predictions_table":table}, commit=False)
+    wandb.log({"predictions_table": table}, commit=False)
 
 
 def train():
@@ -85,9 +103,14 @@ def train():
         config = wandb.config
 
         # Get the data
-        train_dl = get_dataloader(is_train=True, batch_size=config.batch_size)
-        valid_dl = get_dataloader(is_train=False, batch_size=2*config.batch_size)
-        n_steps_per_epoch = math.ceil(len(train_dl.dataset) / config.batch_size)
+        train_dl = get_dataloader(
+            is_train=True,
+            batch_size=config.batch_size)
+        valid_dl = get_dataloader(
+            is_train=False,
+            batch_size=2*config.batch_size)
+        n_steps_per_epoch = \
+            math.ceil(len(train_dl.dataset) / config.batch_size)
         
         # A simple MLP model
         model = get_model(config.dropout)
@@ -109,19 +132,25 @@ def train():
                 optimizer.zero_grad()
                 train_loss.backward()
                 optimizer.step()
-                
+        
                 example_ct += len(images)
-                metrics = {"train/train_loss": train_loss, 
-                        "train/epoch": (step + 1 + (n_steps_per_epoch * epoch)) / n_steps_per_epoch, 
-                        "train/example_ct": example_ct}
-                
+                metrics = {
+                    "train/train_loss": train_loss,
+                    "train/epoch":
+                        (step + 1 + (n_steps_per_epoch * epoch)) / n_steps_per_epoch,
+                    "train/example_ct": example_ct}
+
                 if step + 1 < n_steps_per_epoch:
                     # 🐝 Log train metrics to wandb 
                     wandb.log(metrics)
-                    
+    
                 step_ct += 1
 
-            val_loss, accuracy = validate_model(model, valid_dl, loss_func, log_images=(epoch==(config.epochs-1)))
+            val_loss, accuracy = validate_model(
+                model,
+                valid_dl,
+                loss_func,
+                log_images=(epoch==(config.epochs-1)))
 
             # 🐝 Log train and validation metrics to wandb
             val_metrics = {

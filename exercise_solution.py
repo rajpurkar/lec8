@@ -99,6 +99,7 @@ def train():
                 "dropout": random.uniform(0.01, 0.80),
                 })
         
+
         # Copy your config 
         config = wandb.config
 
@@ -114,12 +115,13 @@ def train():
         
         # A simple MLP model
         model = get_model(config.dropout)
+        wandb.watch(model, log="all", log_freq=100)
 
         # Make the loss and optimizer
         loss_func = nn.CrossEntropyLoss()
         optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
 
-    # Training
+        # Training
         example_ct = 0
         step_ct = 0
         for epoch in range(config.epochs):
